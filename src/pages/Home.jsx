@@ -5,6 +5,7 @@ const Home = () => {
   const [flights, setFlights] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [seats, setSeats] = useState([]);
+  const [suggestedSeat, setSuggestedSeat] = useState(null);
 
 
   useEffect(() => {
@@ -42,6 +43,20 @@ const Home = () => {
       });
   };
 
+  const suggestSeat = (flightId, preference) => {
+    axios.get(`http://localhost:8080/seats/${flightId}/suggest?preference=${preference}`)
+    .then(response => {
+        if(response.data) {
+          setSuggestedSeat(response.data);
+        } else {
+          setSuggestedSeat(null);
+        }
+      })
+      .catch(error => {
+        console.error('Error suggesting seat:', error);
+      });
+  };
+
 
   return (
     <div>
@@ -60,6 +75,14 @@ const Home = () => {
       {selectedFlight && (
         <div>
           <h2>Seats for Flight {selectedFlight}</h2>
+
+          <button onClick={() => suggestSeat(selectedFlight, 'window')}>Suggest Window Seat</button>
+          <button onClick={() => suggestSeat(selectedFlight, 'aisle')}>Suggest Aisle Seat</button>
+
+          {suggestedSeat && (
+              <p>Suggested Seat: {suggestedSeat.seatNumber} ({suggestedSeat.seatType})</p>
+          )}
+
           <ul>
             {seats.map(seat => (
               <li key={seat.id}>
