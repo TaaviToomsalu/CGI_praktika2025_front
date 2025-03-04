@@ -29,6 +29,19 @@ const Home = () => {
       });
   };
 
+  const reserveSeat = (seatId) => {
+    axios.put(`http://localhost:8080/seats/${seatId}/reserve`)
+      .then(() => {
+        // Uuendame istmete olekut pärast broneerimist
+        setSeats(seats.map(seat =>
+          seat.id === seatId ? { ...seat, occupied: true } : seat
+        ));
+      })
+      .catch(error => {
+        console.error('Error reserving seat:', error);
+      });
+  };
+
 
   return (
     <div>
@@ -51,6 +64,11 @@ const Home = () => {
             {seats.map(seat => (
               <li key={seat.id}>
                 Seat {seat.seatNumber} - {seat.occupied ? 'Occupied' : 'Available'} ({seat.seatType})
+                {!seat.occupied && (
+                  <button onClick={() => reserveSeat(seat.id)}>
+                    Reserve
+                  </button>
+                )}
               </li>
             ))}
           </ul>
