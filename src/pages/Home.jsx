@@ -6,6 +6,7 @@ const Home = () => {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [seats, setSeats] = useState([]);
   const [suggestedSeat, setSuggestedSeat] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState(null);
 
 
   useEffect(() => {
@@ -21,6 +22,7 @@ const Home = () => {
 
   const fetchSeats = (flightId) => {
     setSelectedFlight(flightId);
+    setSelectedSeats([]); // ← Tühjenda valitud istekohad
     axios.get(`http://localhost:8080/seats/${flightId}`)
       .then(response => {
         setSeats(response.data);
@@ -46,7 +48,7 @@ const Home = () => {
   const suggestSeat = (flightId, preference) => {
     axios.get(`http://localhost:8080/seats/${flightId}/suggest?preference=${preference}`)
     .then(response => {
-        if(response.data) {
+        if(response.data && response.data.seatNumber) {
           setSuggestedSeat(response.data);
         } else {
           setSuggestedSeat(null);
@@ -55,6 +57,36 @@ const Home = () => {
       .catch(error => {
         console.error('Error suggesting seat:', error);
       });
+  };
+
+  const toggleSeatSelection = (seatId) => {
+    setSelectedSeats((prevSelected) => 
+      prevSelected.includes(seatId) 
+        ? prevSelected.filter(id => id !== seatId)
+        : [...prevSelected, seatId]
+    );
+  };
+
+  const reserveSelectedSeats = () => {
+    if (selectedSeats.length === 0) {
+      alert("Please select at least one seat!");
+      return;
+    }
+  
+    axios.put("http://localhost:8080/seats/reserve", {
+      flightId: selectedFlight,
+      seatIds: selectedSeats
+    })
+    .then(() => {
+      setSeats(prevSeats => 
+        prevSeats.map(seat =>
+          selectedSeats.includes(seat.id) ? { ...seat, occupied: true } : seat
+        )
+      );
+    })
+    .catch(error => {
+      console.error("Error reserving seats:", error);
+    });
   };
 
 
@@ -86,15 +118,17 @@ const Home = () => {
           <ul>
             {seats.map(seat => (
               <li key={seat.id}>
-                Seat {seat.seatNumber} - {seat.occupied ? 'Occupied' : 'Available'} ({seat.seatType})
-                {!seat.occupied && (
-                  <button onClick={() => reserveSeat(seat.id)}>
-                    Reserve
-                  </button>
-                )}
+                <input
+                  type="checkbox"
+                  disabled={seat.occupied}  // Kui juba broneeritud, ei saa valida
+                  checked={selectedSeats.includes(seat.id)}
+                  onChange={() => toggleSeatSelection(seat.id)}
+                />
+                Seat {seat.seatNumber} - {seat.occupied ? "Occupied" : "Available"} ({seat.seatType})
               </li>
             ))}
           </ul>
+          <button onClick={reserveSelectedSeats}>Reserve Selected Seats</button>
         </div>
       )}
     </div>
