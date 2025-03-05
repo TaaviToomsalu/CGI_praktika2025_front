@@ -6,7 +6,12 @@ const Home = () => {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [seats, setSeats] = useState([]);
   const [suggestedSeat, setSuggestedSeat] = useState(null);
-  const [selectedSeats, setSelectedSeats] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+
+  const [destination, setDestination] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
 
   useEffect(() => {
@@ -14,11 +19,28 @@ const Home = () => {
       .then(response => {
         console.log("Flights from API:", response.data);
         setFlights(response.data);
-      })
+      }) 
       .catch(error => {
         console.error('Error fetching flights:', error);
       });
   }, []);
+
+  const fetchFilteredFlights = () => {
+    const params = new URLSearchParams();
+
+    if (destination) params.append('destination', destination);
+    if (maxPrice) params.append('maxPrice', maxPrice);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+
+    axios.get(`http://localhost:8080/flights?${params.toString()}`)
+    .then(response => {
+        setFlights(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching flights:', error);
+      })
+    };
 
   const fetchSeats = (flightId) => {
     setSelectedFlight(flightId);
@@ -93,6 +115,31 @@ const Home = () => {
   return (
     <div>
       <h1>Available Flights</h1>
+      <div>
+        <input
+          type="text"
+          placeholder='Destination'
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
+        />
+        <input
+          type='number'
+          placeholder='Max Price'
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+        />
+        <input
+          type='datetime-local'
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+        <input
+          type='datetime-local'
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+        <button onClick={fetchFilteredFlights}>Search</button>
+      </div>
       <ul>
         {flights.map(flight => (
           <li key={flight.id}>
