@@ -7,17 +7,16 @@ const Home = () => {
   const [seats, setSeats] = useState([]);
   const [suggestedSeat, setSuggestedSeat] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]);
-
   const [destination, setDestination] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
+  const [preferences, setPreferences] = useState([]);
+  const [numSeats, setNumSeats] = useState(1);
 
   useEffect(() => {
     axios.get('http://localhost:8080/flights')
       .then(response => {
-        console.log("Flights from API:", response.data);
         setFlights(response.data);
       }) 
       .catch(error => {
@@ -34,19 +33,24 @@ const Home = () => {
     if (endDate) params.append('endDate', endDate);
 
     axios.get(`http://localhost:8080/flights?${params.toString()}`)
-    .then(response => {
+      .then(response => {
         setFlights(response.data);
       })
       .catch(error => {
         console.error('Error fetching flights:', error);
-      })
-    };
+      });
+  };
+
+  const handleNumSeatsChange = (e) => {
+    setNumSeats(Number(e.target.value));
+  };
 
   const fetchSeats = (flightId) => {
     setSelectedFlight(flightId);
-    setSelectedSeats([]); // ← Tühjenda valitud istekohad
+    setSelectedSeats([]); // Tühjenda valitud istekohad
     axios.get(`http://localhost:8080/seats/${flightId}`)
       .then(response => {
+        // console.log("Received seats data:", response.data);
         setSeats(response.data);
       })
       .catch(error => {
@@ -54,39 +58,30 @@ const Home = () => {
       });
   };
 
-  const reserveSeat = (seatId) => {
-    axios.put(`http://localhost:8080/seats/${seatId}/reserve`)
-      .then(() => {
-        // Uuendame istmete olekut pärast broneerimist
-        setSeats(seats.map(seat =>
-          seat.id === seatId ? { ...seat, occupied: true } : seat
-        ));
-      })
-      .catch(error => {
-        console.error('Error reserving seat:', error);
-      });
-  };
-
-  const suggestSeat = (flightId, preference) => {
-    axios.get(`http://localhost:8080/seats/${flightId}/suggest?preference=${preference}`)
-    .then(response => {
-        if(response.data && response.data.seatNumber) {
-          setSuggestedSeat(response.data);
-        } else {
-          setSuggestedSeat(null);
-        }
-      })
-      .catch(error => {
-        console.error('Error suggesting seat:', error);
-      });
-  };
-
   const toggleSeatSelection = (seatId) => {
-    setSelectedSeats((prevSelected) => 
-      prevSelected.includes(seatId) 
-        ? prevSelected.filter(id => id !== seatId)
-        : [...prevSelected, seatId]
-    );
+    setSelectedSeats((prevSelected) => {
+      const updatedSeats = prevSelected.includes(seatId) 
+        ? prevSelected.filter(id => id !== seatId) 
+        : [...prevSelected, seatId];
+
+      return updatedSeats;
+    });
+  };
+
+  const filterSeats = () => {
+    if (preferences.length === 0) {
+      // Kui eelistusi pole, siis tagastame kõik istmed
+      return seats;
+    }
+  
+    return seats.filter(seat => {
+      // Kui seatTypes on massiiv, siis kontrollime, kas kõik eelistused on seal olemas
+      if (seat.seatTypes) {
+        // Kontrollime, kas kõik preferences sisaldavad seatTypes
+        return preferences.every(pref => seat.seatTypes.includes(pref));
+      }
+      return false;
+    });
   };
 
   const reserveSelectedSeats = () => {
@@ -94,22 +89,58 @@ const Home = () => {
       alert("Please select at least one seat!");
       return;
     }
-  
+
     axios.put("http://localhost:8080/seats/reserve", {
       flightId: selectedFlight,
       seatIds: selectedSeats
     })
     .then(() => {
-      setSeats(prevSeats => 
+      setSeats(prevSeats =>
         prevSeats.map(seat =>
           selectedSeats.includes(seat.id) ? { ...seat, occupied: true } : seat
         )
       );
+      setSelectedSeats([]); // Tühjenda valikud peale kinnitamist
     })
     .catch(error => {
       console.error("Error reserving seats:", error);
     });
   };
+
+  const handlePreferenceChange = (preference) => {
+    setPreferences((prevPreferences) => {
+      if (prevPreferences.includes(preference)) {
+        return prevPreferences.filter((pref) => pref !== preference);
+      } else {
+        return [...prevPreferences, preference];
+      }
+    });
+  };
+
+  
+  
+  
+  
+
+  const suggestSeats = () => {
+    if (selectedFlight && preferences.length > 0) {
+      axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest?preferences=${preferences.join(',')}`)
+        .then(response => {
+          if (response.data && response.data.length > 0) {
+            setSuggestedSeat(response.data);
+          } else {
+            setSuggestedSeat(null);
+          }
+        })
+        .catch(error => {
+          console.error('Error suggesting seats:', error);
+        });
+    } else {
+      alert("Please select preferences first!");
+    }
+  };
+
+
 
 
   return (
@@ -151,27 +182,54 @@ const Home = () => {
         ))}
       </ul>
 
+      {/* Istmete arvu määramise sisend */}
       {selectedFlight && (
         <div>
-          <h2>Seats for Flight {selectedFlight}</h2>
+          <h2>Number of Seats</h2>
+          <input
+            type="number"
+            value={numSeats}
+            min="1"
+            onChange={handleNumSeatsChange}
+            placeholder="Enter number of seats"
+          />
+        </div>
+      )}
 
-          <button onClick={() => suggestSeat(selectedFlight, 'window')}>Suggest Window Seat</button>
-          <button onClick={() => suggestSeat(selectedFlight, 'aisle')}>Suggest Aisle Seat</button>
+      {/* Kui istmete arv on määratud, kuvatakse istmete valik */}
+      {selectedFlight && numSeats > 0 && (
+        <div>
+          <h2>Seats for Flight {selectedFlight}</h2>
+          
+          <div>
+            <h3>Filter Seats by Preferences:</h3>
+            {['window', 'extra_legroom', 'near_exit'].map(pref => (
+              <label key={pref}>
+                <input
+                  type="checkbox"
+                  value={pref}
+                  checked={preferences.includes(pref)}
+                  onChange={() => handlePreferenceChange(pref)}
+                />
+                {pref.charAt(0).toUpperCase() + pref.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2')}
+              </label>
+            ))}
+          </div>
 
           {suggestedSeat && (
-              <p>Suggested Seat: {suggestedSeat.seatNumber} ({suggestedSeat.seatType})</p>
+            <p>Suggested Seat: {suggestedSeat.seatNumber} ({suggestedSeat.seatType})</p>
           )}
-
           <ul>
-            {seats.map(seat => (
+            {filterSeats().map(seat => (
               <li key={seat.id}>
                 <input
                   type="checkbox"
-                  disabled={seat.occupied}  // Kui juba broneeritud, ei saa valida
+                  disabled={seat.occupied}
                   checked={selectedSeats.includes(seat.id)}
                   onChange={() => toggleSeatSelection(seat.id)}
                 />
-                Seat {seat.seatNumber} - {seat.occupied ? "Occupied" : "Available"} ({seat.seatType})
+                Seat {seat.seatNumber} - {seat.occupied ? "Occupied" : "Available"} 
+                ({seat.seatTypes ? seat.seatTypes.join(", ") : "No seat type"})
               </li>
             ))}
           </ul>
