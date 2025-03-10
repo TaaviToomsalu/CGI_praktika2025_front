@@ -13,6 +13,7 @@ const Home = () => {
   const [endDate, setEndDate] = useState('');
   const [preferences, setPreferences] = useState([]);
   const [numSeats, setNumSeats] = useState(1);
+  const [adjacentSeats, setAdjacentSeats] = useState([]);
 
   useEffect(() => {
     axios.get('http://localhost:8080/flights')
@@ -24,6 +25,7 @@ const Home = () => {
       });
   }, []);
 
+  
   const fetchFilteredFlights = () => {
     const params = new URLSearchParams();
 
@@ -39,10 +41,15 @@ const Home = () => {
       .catch(error => {
         console.error('Error fetching flights:', error);
       });
-  };
+  }; 
+  
 
   const handleNumSeatsChange = (e) => {
     setNumSeats(Number(e.target.value));
+  };
+
+  const handleAdjacentSeatsChange = (e) => {
+    setAdjacentSeats(prev => !prev);
   };
 
   const fetchSeats = (flightId) => {
@@ -60,33 +67,44 @@ const Home = () => {
 
   const toggleSeatSelection = (seatId) => {
     setSelectedSeats((prevSelected) => {
-      const updatedSeats = prevSelected.includes(seatId) 
-        ? prevSelected.filter(id => id !== seatId) 
-        : [...prevSelected, seatId];
-
-      return updatedSeats;
+      if (prevSelected.length < numSeats || prevSelected.includes(seatId)) {
+        const updatedSeats = prevSelected.includes(seatId) 
+          ? prevSelected.filter(id => id !== seatId) 
+          : [...prevSelected, seatId];
+        return updatedSeats;
+      }
+      return prevSelected;
     });
   };
 
   const filterSeats = () => {
-    if (preferences.length === 0) {
-      // Kui eelistusi pole, siis tagastame kõik istmed
-      return seats;
+    let availableSeats = seats.filter(seat => !seat.occupied);
+    if (preferences.length > 0) {
+      availableSeats = availableSeats.filter(seat => 
+        seat.seatTypes && preferences.every(pref => seat.seatTypes.includes(pref))
+      );
     }
-  
-    return seats.filter(seat => {
-      // Kui seatTypes on massiiv, siis kontrollime, kas kõik eelistused on seal olemas
-      if (seat.seatTypes) {
-        // Kontrollime, kas kõik preferences sisaldavad seatTypes
-        return preferences.every(pref => seat.seatTypes.includes(pref));
+    if (adjacentSeats && numSeats > 1) {
+      return findAdjacentSeats(availableSeats);
+    }
+    return availableSeats; 
+  };
+
+  const findAdjacentSeats = (availableSeats) => {
+    availableSeats.sort((a, b) => a.seatNumber - b.seatNumber);
+    for (let i = 0; i <= availableSeats.length - numSeats; i++) {
+      const group = availableSeats.slice(i, i + numSeats);
+      if (group.length === numSeats && group.every((seat, index, arr) => 
+        index === 0 || seat.seatNumber === arr[index - 1].seatNumber + 1)) {
+          return group;
       }
-      return false;
-    });
+    }
+    return availableSeats;
   };
 
   const reserveSelectedSeats = () => {
-    if (selectedSeats.length === 0) {
-      alert("Please select at least one seat!");
+    if (selectedSeats.length !== numSeats) {
+      alert(`Please select exactly ${numSeats} seats!`);
       return;
     }
 
@@ -147,37 +165,17 @@ const Home = () => {
     <div>
       <h1>Available Flights</h1>
       <div>
-        <input
-          type="text"
-          placeholder='Destination'
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-        />
-        <input
-          type='number'
-          placeholder='Max Price'
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-        />
-        <input
-          type='datetime-local'
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-        />
-        <input
-          type='datetime-local'
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
+        <input type="text"  placeholder='Destination' value={destination} onChange={(e) => setDestination(e.target.value)} />
+        <input type='number' placeholder='Max Price' value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+        <input type='datetime-local' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        <input type='datetime-local' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         <button onClick={fetchFilteredFlights}>Search</button>
       </div>
       <ul>
         {flights.map(flight => (
           <li key={flight.id}>
             <strong>{flight.destination}</strong> - {new Date(flight.departureTime).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} - {flight.price}€
-            <button onClick={() => fetchSeats(flight.id)}>
-              View Seats
-            </button>
+            <button onClick={() => fetchSeats(flight.id)}>View Seats</button>
           </li>
         ))}
       </ul>
@@ -185,14 +183,12 @@ const Home = () => {
       {/* Istmete arvu määramise sisend */}
       {selectedFlight && (
         <div>
-          <h2>Number of Seats</h2>
-          <input
-            type="number"
-            value={numSeats}
-            min="1"
-            onChange={handleNumSeatsChange}
-            placeholder="Enter number of seats"
-          />
+          <p>Enter number of seats</p>
+          <input type="number" value={numSeats} min="1" onChange={handleNumSeatsChange} />
+          <label>
+            <input type='checkbox' checked={adjacentSeats} onChange={handleAdjacentSeatsChange} />
+            Adjacent Seats
+          </label>
         </div>
       )}
 
