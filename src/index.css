@@ -1,0 +1,47 @@
+.seat-map {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.row {
+    display: flex;
+    gap: 5px;
+}
+
+.seat {
+    width: 40px;
+    height: 40px;
+    border: 1px solid black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: lightgray;
+    cursor: pointer;
+}
+
+.exit-row {
+    background-color: #ffcccb;
+}
+
+.extra-legroom {
+    background-color: #b3e0ff;
+}
+
+/* Kui iste on occupied, siis tee see halliks ja ära lase klikkida */
+.occupied {
+    background-color: gray; /* Hall värv */
+    cursor: not-allowed;    /* Muuda kursor mitte-klikatavaks */
+}
+
+/* Kui iste on valitud, siis highlight */
+.selected {
+    background-color: lightblue;
+}
+
+/* Kui istmel on akna vaade, siis eraldi stiil */
+.window-seat {
+    background-color: lightgreen;
+}
+

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import SeatMap from '../components/SeatMap';
 
 const Home = () => {
   const [flights, setFlights] = useState([]);
@@ -57,8 +58,9 @@ const Home = () => {
     setSelectedSeats([]); // Tühjenda valitud istekohad
     axios.get(`http://localhost:8080/seats/${flightId}`)
       .then(response => {
-        // console.log("Received seats data:", response.data);
+        console.log("Received seats data:", response.data);
         setSeats(response.data);
+        console.log(response.data);
       })
       .catch(error => {
         console.error('Error fetching seats:', error);
@@ -67,6 +69,14 @@ const Home = () => {
 
   const toggleSeatSelection = (seatId) => {
     setSelectedSeats((prevSelected) => {
+
+      const seat = seats.find(seat => seat.id === seatId);
+    
+    // Kui iste on okupeeritud, siis ei lubata valida
+    if (seat && seat.occupied) {
+      return prevSelected;
+    }
+
       if (prevSelected.length < numSeats || prevSelected.includes(seatId)) {
         const updatedSeats = prevSelected.includes(seatId) 
           ? prevSelected.filter(id => id !== seatId) 
@@ -75,19 +85,6 @@ const Home = () => {
       }
       return prevSelected;
     });
-  };
-
-  const filterSeats = () => {
-    let availableSeats = seats.filter(seat => !seat.occupied);
-    if (preferences.length > 0) {
-      availableSeats = availableSeats.filter(seat => 
-        seat.seatTypes && preferences.every(pref => seat.seatTypes.includes(pref))
-      );
-    }
-    if (adjacentSeats && numSeats > 1) {
-      return findAdjacentSeats(availableSeats);
-    }
-    return availableSeats; 
   };
 
   const findAdjacentSeats = (availableSeats) => {
@@ -171,6 +168,8 @@ const Home = () => {
         <input type='datetime-local' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         <button onClick={fetchFilteredFlights}>Search</button>
       </div>
+
+      {/* Saadaval olevate lendude kuvamine */}
       <ul>
         {flights.map(flight => (
           <li key={flight.id}>
@@ -192,7 +191,11 @@ const Home = () => {
         </div>
       )}
 
-      {/* Kui istmete arv on määratud, kuvatakse istmete valik */}
+
+      
+
+      {/* 
+      
       {selectedFlight && numSeats > 0 && (
         <div>
           <h2>Seats for Flight {selectedFlight}</h2>
@@ -232,6 +235,21 @@ const Home = () => {
           <button onClick={reserveSelectedSeats}>Reserve Selected Seats</button>
         </div>
       )}
+      */}
+
+      
+
+      {/* Kui lend ja istmete arv on määratud, kuvame SeatMap'i */}
+        {selectedFlight && numSeats > 0 && (
+        <div>
+          <h1>Lennu Isteplaan</h1>
+          <SeatMap 
+            seats={seats} 
+            selectedSeats={selectedSeats} 
+            onSelectSeat={toggleSeatSelection}
+          /> 
+        </div>
+        )}
     </div>
   );
 };
