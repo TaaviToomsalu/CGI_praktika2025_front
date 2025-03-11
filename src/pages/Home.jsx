@@ -6,7 +6,7 @@ const Home = () => {
   const [flights, setFlights] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [seats, setSeats] = useState([]);
-  const [suggestedSeat, setSuggestedSeat] = useState(null);
+  const [suggestedSeats, setSuggestedSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [destination, setDestination] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -14,7 +14,7 @@ const Home = () => {
   const [endDate, setEndDate] = useState('');
   const [preferences, setPreferences] = useState([]);
   const [numSeats, setNumSeats] = useState(1);
-  const [adjacentSeats, setAdjacentSeats] = useState([]);
+  const [adjacentSeats, setAdjacentSeats] = useState(false);
 
   useEffect(() => {
     axios.get('http://localhost:8080/flights')
@@ -55,12 +55,12 @@ const Home = () => {
 
   const fetchSeats = (flightId) => {
     setSelectedFlight(flightId);
-    setSelectedSeats([]); // Tühjenda valitud istekohad
+    setSelectedSeats([]);
     axios.get(`http://localhost:8080/seats/${flightId}`)
       .then(response => {
-        console.log("Received seats data:", response.data);
+        //console.log("Received seats data:", response.data);
         setSeats(response.data);
-        console.log(response.data);
+        //console.log(response.data);
       })
       .catch(error => {
         console.error('Error fetching seats:', error);
@@ -69,21 +69,19 @@ const Home = () => {
 
   const toggleSeatSelection = (seatId) => {
     setSelectedSeats((prevSelected) => {
-
       const seat = seats.find(seat => seat.id === seatId);
-    
-    // Kui iste on okupeeritud, siis ei lubata valida
-    if (seat && seat.occupied) {
-      return prevSelected;
-    }
-
-      if (prevSelected.length < numSeats || prevSelected.includes(seatId)) {
-        const updatedSeats = prevSelected.includes(seatId) 
-          ? prevSelected.filter(id => id !== seatId) 
-          : [...prevSelected, seatId];
-        return updatedSeats;
+  
+      // Kui iste on okupeeritud, siis ei lubata valida
+      if (seat && seat.occupied) return prevSelected;
+  
+      // If seat is already selected, remove it. Otherwise, add it (if limit is not reached).
+      if (prevSelected.includes(seatId)) {
+        return prevSelected.filter(id => id !== seatId);
+      } else if (prevSelected.length < numSeats) {
+        return [...prevSelected, seatId];
       }
-      return prevSelected;
+      
+      return prevSelected; // No changes if limit is reached
     });
   };
 
@@ -139,12 +137,21 @@ const Home = () => {
 
   const suggestSeats = () => {
     if (selectedFlight && preferences.length > 0) {
-      axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest?preferences=${preferences.join(',')}`)
+
+      console.log("Fetching suggested seats...");
+      axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest`, {
+        params: {
+          numSeats: numSeats,
+          preferences: preferences.join(',')
+        }
+      })
         .then(response => {
           if (response.data && response.data.length > 0) {
-            setSuggestedSeat(response.data);
+            console.log("Full API response:", response);
+            setSuggestedSeats(response.data || []);
+            console.log("Suggested seats:", response.data);
           } else {
-            setSuggestedSeat(null);
+            setSuggestedSeats(null);
           }
         })
         .catch(error => {
@@ -154,7 +161,9 @@ const Home = () => {
       alert("Please select preferences first!");
     }
   };
-
+  useEffect(() => {
+    console.log("Updated suggestedSeats state:", suggestedSeats);
+}, [suggestedSeats]);
 
 
 
@@ -188,57 +197,27 @@ const Home = () => {
             <input type='checkbox' checked={adjacentSeats} onChange={handleAdjacentSeatsChange} />
             Adjacent Seats
           </label>
-        </div>
-      )}
 
 
-      
+          <h3>Filter Seats by Preferences:</h3>
+          {['window', 'extra_legroom', 'near_exit'].map(pref => (
+            <label key={pref}>
+              <input
+                type="checkbox"
+                value={pref}
+                checked={preferences.includes(pref)}
+                onChange={() => handlePreferenceChange(pref)}
+              />
+              {pref.charAt(0).toUpperCase() + pref.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2')}
+            </label>
+          ))}
+          <button onClick={suggestSeats}>Suggest Seat</button>
 
-      {/* 
-      
-      {selectedFlight && numSeats > 0 && (
-        <div>
-          <h2>Seats for Flight {selectedFlight}</h2>
           
-          <div>
-            <h3>Filter Seats by Preferences:</h3>
-            {['window', 'extra_legroom', 'near_exit'].map(pref => (
-              <label key={pref}>
-                <input
-                  type="checkbox"
-                  value={pref}
-                  checked={preferences.includes(pref)}
-                  onChange={() => handlePreferenceChange(pref)}
-                />
-                {pref.charAt(0).toUpperCase() + pref.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2')}
-              </label>
-            ))}
-          </div>
-
-          {suggestedSeat && (
-            <p>Suggested Seat: {suggestedSeat.seatNumber} ({suggestedSeat.seatType})</p>
-          )}
-          <ul>
-            {filterSeats().map(seat => (
-              <li key={seat.id}>
-                <input
-                  type="checkbox"
-                  disabled={seat.occupied}
-                  checked={selectedSeats.includes(seat.id)}
-                  onChange={() => toggleSeatSelection(seat.id)}
-                />
-                Seat {seat.seatNumber} - {seat.occupied ? "Occupied" : "Available"} 
-                ({seat.seatTypes ? seat.seatTypes.join(", ") : "No seat type"})
-              </li>
-            ))}
-          </ul>
-          <button onClick={reserveSelectedSeats}>Reserve Selected Seats</button>
         </div>
       )}
-      */}
 
       
-
       {/* Kui lend ja istmete arv on määratud, kuvame SeatMap'i */}
         {selectedFlight && numSeats > 0 && (
         <div>
@@ -247,7 +226,10 @@ const Home = () => {
             seats={seats} 
             selectedSeats={selectedSeats} 
             onSelectSeat={toggleSeatSelection}
+            preferences={preferences}
+            suggestedSeats={suggestedSeats}
           /> 
+          <button onClick={reserveSelectedSeats}>Reserve Selected Seats</button>
         </div>
         )}
     </div>

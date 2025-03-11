@@ -1,6 +1,6 @@
 import React from "react";
 
-const SeatMap = ({ seats, selectedSeats, onSelectSeat }) => {
+const SeatMap = ({ seats, selectedSeats, onSelectSeat, preferences, suggestedSeats }) => {
     const rows = 6;
     const seatsPerRow = 4;
     const extraLegroomRows = [1];
@@ -28,26 +28,32 @@ const SeatMap = ({ seats, selectedSeats, onSelectSeat }) => {
                             if (!seat) return null; 
                             
                             const seatNumber = seat.seatNumber;
-                            
+
                             
 
                             // Kontrollime, kas iste on juba valitud
                             const isSelected = selectedSeats.includes(seatNumber);
                             const isOccupied = seat.occupied;
                             const isWindowSeat = windowSeatIndexes.includes(seatIndex);
+                            const isRecommended = Array.isArray(suggestedSeats) && suggestedSeats.some(s => s.seatNumber === seatNumber);
 
                             
-                            const seatClassName = `seat ${isWindowSeat ? "window-seat" : ""} ${isSelected ? "selected" : ""} ${isOccupied ? "occupied" : ""}`;
+
+                            const seatClassName = `seat 
+                                ${isWindowSeat ? "window-seat" : ""} 
+                                ${isSelected ? "selected" : ""} 
+                                ${isOccupied ? "occupied" : ""}
+                                ${isRecommended ? "recommended" : ""}`;
                             //console.log("seatNumber:", seatNumber, "occupied", isOccupied, "className:", seatClassName);  // Siin logime className välja
-                            console.log("seats:", seats);  // Logige kõik seats andmed
-                            console.log("seatNumber:", seatNumber);  // Logige iga seatNumber väärtus
+                            //console.log("seats:", seats);  // Logige kõik seats andmed
+                            //console.log("seatNumber:", seatNumber);  // Logige iga seatNumber väärtus
+                            
                             return (
                                 <div
                                     key={seatIndex}
                                     className={seatClassName}
                                     onClick={() => !isOccupied && onSelectSeat(seatNumber)}
                                     style={{
-                                        backgroundColor: isSelected ? "lightblue" : (isOccupied ? "gray" : "white"),
                                         cursor: isOccupied ? "not-allowed" : "pointer"
                                     }}
                                 >

@@ -14,13 +14,15 @@
     width: 40px;
     height: 40px;
     border: 1px solid black;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: lightgray;
+    background-color: lightgreen;
     cursor: pointer;
 }
 
+/*
 .exit-row {
     background-color: #ffcccb;
 }
@@ -28,6 +30,7 @@
 .extra-legroom {
     background-color: #b3e0ff;
 }
+*/
 
 /* Kui iste on occupied, siis tee see halliks ja ära lase klikkida */
 .occupied {
@@ -37,11 +40,17 @@
 
 /* Kui iste on valitud, siis highlight */
 .selected {
-    background-color: lightblue;
+    background-color: lightblue !important;
 }
 
-/* Kui istmel on akna vaade, siis eraldi stiil */
+/* Kui istmel on akna vaade, siis eraldi stiil 
 .window-seat {
     background-color: lightgreen;
 }
+    */
 
+
+.seat.recommended {
+    background-color: pink;
+    border: 1px solid red;
+  }
