@@ -49,9 +49,11 @@ const Home = () => {
     setNumSeats(Number(e.target.value));
   };
 
+
   const handleAdjacentSeatsChange = (e) => {
     setAdjacentSeats(prev => !prev);
   };
+
 
   const fetchSeats = (flightId) => {
     setSelectedFlight(flightId);
@@ -66,6 +68,7 @@ const Home = () => {
         console.error('Error fetching seats:', error);
       });
   };
+
 
   const toggleSeatSelection = (seatId) => {
     setSelectedSeats((prevSelected) => {
@@ -85,17 +88,11 @@ const Home = () => {
     });
   };
 
-  const findAdjacentSeats = (availableSeats) => {
-    availableSeats.sort((a, b) => a.seatNumber - b.seatNumber);
-    for (let i = 0; i <= availableSeats.length - numSeats; i++) {
-      const group = availableSeats.slice(i, i + numSeats);
-      if (group.length === numSeats && group.every((seat, index, arr) => 
-        index === 0 || seat.seatNumber === arr[index - 1].seatNumber + 1)) {
-          return group;
-      }
-    }
-    return availableSeats;
-  };
+  /*
+  useEffect(() => {
+    console.log("Selected seats:", selectedSeats);
+  }, [selectedSeats]);
+  */
 
   const reserveSelectedSeats = () => {
     if (selectedSeats.length !== numSeats) {
@@ -108,17 +105,24 @@ const Home = () => {
       seatIds: selectedSeats
     })
     .then(() => {
-      setSeats(prevSeats =>
-        prevSeats.map(seat =>
-          selectedSeats.includes(seat.id) ? { ...seat, occupied: true } : seat
-        )
-      );
-      setSelectedSeats([]); // Tühjenda valikud peale kinnitamist
+      setSeats(prevSeats => {
+        const updatedSeats = prevSeats.map(seat => {
+          if (selectedSeats.includes(seat.seatNumber)) {
+            return { ...seat, occupied: true };
+          }
+          return seat;
+        });
+        return updatedSeats;
+      });
+      setSelectedSeats([]);
     })
     .catch(error => {
       console.error("Error reserving seats:", error);
     });
-  };
+};
+
+
+
 
   const handlePreferenceChange = (preference) => {
     setPreferences((prevPreferences) => {
@@ -129,21 +133,27 @@ const Home = () => {
       }
     });
   };
-
-  
-  
-  
   
 
   const suggestSeats = () => {
     if (selectedFlight && preferences.length > 0) {
+      if (!selectedFlight) {
+        console.error("Missing selected flight ID.");
+        return;
+      }
+
+      const requestData = {
+        flightId: selectedFlight,
+        numSeats: numSeats,
+        preferences: preferences.join(','),
+        requireAdjacent: adjacentSeats
+      };
 
       console.log("Fetching suggested seats...");
+      console.log("Sending request with data:", requestData);
+
       axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest`, {
-        params: {
-          numSeats: numSeats,
-          preferences: preferences.join(',')
-        }
+        params: requestData
       })
         .then(response => {
           if (response.data && response.data.length > 0) {
@@ -161,10 +171,6 @@ const Home = () => {
       alert("Please select preferences first!");
     }
   };
-  useEffect(() => {
-    console.log("Updated suggestedSeats state:", suggestedSeats);
-}, [suggestedSeats]);
-
 
 
   return (
