@@ -44,9 +44,6 @@ const SeatMap = ({ seats, selectedSeats, onSelectSeat, preferences, suggestedSea
                                 ${isSelected ? "selected" : ""} 
                                 ${isOccupied ? "occupied" : ""}
                                 ${isRecommended ? "recommended" : ""}`;
-                            //console.log("seatNumber:", seatNumber, "occupied", isOccupied, "className:", seatClassName);  // Siin logime className välja
-                            //console.log("seats:", seats);  // Logige kõik seats andmed
-                            //console.log("seatNumber:", seatNumber);  // Logige iga seatNumber väärtus
                             
                             return (
                                 <div
@@ -57,7 +54,7 @@ const SeatMap = ({ seats, selectedSeats, onSelectSeat, preferences, suggestedSea
                                         cursor: isOccupied ? "not-allowed" : "pointer"
                                     }}
                                 >
-                                    {seatNumber}{String.fromCharCode(65 + seatIndex)}
+                                    {seatNumber}
                                 </div>
                             );
                         })}

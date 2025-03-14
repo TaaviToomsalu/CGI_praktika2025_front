@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SeatMap from '../components/SeatMap';
+import FlightFilter from "../components/FlightFilter";
 
 const Home = () => {
   const [flights, setFlights] = useState([]);
@@ -12,14 +13,18 @@ const Home = () => {
   const [maxPrice, setMaxPrice] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [seatClass, setSeatClass] = useState("economy");
   const [preferences, setPreferences] = useState([]);
   const [numSeats, setNumSeats] = useState(1);
   const [adjacentSeats, setAdjacentSeats] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+
 
   useEffect(() => {
-    axios.get('http://localhost:8080/flights')
+    axios.get('http://localhost:8080/flights/')
       .then(response => {
         setFlights(response.data);
+        console.log(response.data);
       }) 
       .catch(error => {
         console.error('Error fetching flights:', error);
@@ -29,11 +34,11 @@ const Home = () => {
   
   const fetchFilteredFlights = () => {
     const params = new URLSearchParams();
-
     if (destination) params.append('destination', destination);
     if (maxPrice) params.append('maxPrice', maxPrice);
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (seatClass) params.append("seatClass", seatClass);
 
     axios.get(`http://localhost:8080/flights?${params.toString()}`)
       .then(response => {
@@ -43,6 +48,19 @@ const Home = () => {
         console.error('Error fetching flights:', error);
       });
   }; 
+
+
+  const fetchSeats = (flightId, seatClass) => {
+    setSelectedClass(seatClass);
+
+    axios.get(`http://localhost:8080/seats/${flightId}?class=${seatClass}`)
+      .then(response => {
+        setSeats(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching seats:', error);
+      });
+  };
   
 
   const handleNumSeatsChange = (e) => {
@@ -52,21 +70,6 @@ const Home = () => {
 
   const handleAdjacentSeatsChange = (e) => {
     setAdjacentSeats(prev => !prev);
-  };
-
-
-  const fetchSeats = (flightId) => {
-    setSelectedFlight(flightId);
-    setSelectedSeats([]);
-    axios.get(`http://localhost:8080/seats/${flightId}`)
-      .then(response => {
-        //console.log("Received seats data:", response.data);
-        setSeats(response.data);
-        //console.log(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching seats:', error);
-      });
   };
 
 
@@ -88,11 +91,6 @@ const Home = () => {
     });
   };
 
-  /*
-  useEffect(() => {
-    console.log("Selected seats:", selectedSeats);
-  }, [selectedSeats]);
-  */
 
   const reserveSelectedSeats = () => {
     if (selectedSeats.length !== numSeats) {
@@ -149,9 +147,6 @@ const Home = () => {
         requireAdjacent: adjacentSeats
       };
 
-      console.log("Fetching suggested seats...");
-      console.log("Sending request with data:", requestData);
-
       axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest`, {
         params: requestData
       })
@@ -159,7 +154,6 @@ const Home = () => {
           if (response.data && response.data.length > 0) {
             console.log("Full API response:", response);
             setSuggestedSeats(response.data || []);
-            console.log("Suggested seats:", response.data);
           } else {
             setSuggestedSeats(null);
           }
@@ -172,27 +166,90 @@ const Home = () => {
     }
   };
 
+  useEffect(() => {
+    console.log("Selected Flight:", selectedFlight);
+  }, [selectedFlight]);
+
 
   return (
     <div>
-      <h1>Available Flights</h1>
-      <div>
-        <input type="text"  placeholder='Destination' value={destination} onChange={(e) => setDestination(e.target.value)} />
-        <input type='number' placeholder='Max Price' value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
-        <input type='datetime-local' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <input type='datetime-local' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        <button onClick={fetchFilteredFlights}>Search</button>
-      </div>
+      <h1>Flight App</h1>
+      
+      <FlightFilter
+        destination={destination}
+        setDestination={setDestination}
+        maxPrice={maxPrice}
+        setMaxPrice={setMaxPrice}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        seatClass={seatClass}
+        setSeatClass={setSeatClass}
+        fetchFilteredFlights={fetchFilteredFlights}
+      />
 
       {/* Saadaval olevate lendude kuvamine */}
-      <ul>
-        {flights.map(flight => (
-          <li key={flight.id}>
-            <strong>{flight.destination}</strong> - {new Date(flight.departureTime).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} - {flight.price}€
-            <button onClick={() => fetchSeats(flight.id)}>View Seats</button>
-          </li>
-        ))}
-      </ul>
+      <h3>Select a Flight</h3>
+      {flights.map((flight) => (
+        <div key={flight.id}>
+          <label>
+            <input 
+              type="radio" 
+              name="selectedFlight" 
+              value={flight.id} 
+              checked={selectedFlight === flight.id} 
+              onChange={() => setSelectedFlight(flight)}
+            />
+            <strong>{flight.destination}</strong> - {new Date(flight.departureTime).toLocaleString('en-GB', { 
+              dateStyle: 'medium', 
+              timeStyle: 'short' 
+            })}
+          </label>
+        </div>
+      ))}
+
+      
+
+      
+      {selectedFlight && (
+        <div>
+          <h2>Choose Seat Class</h2>
+          {["Economy", "Business", "First"].map((cls) => {
+            let price = 0;
+            let info = "";
+
+            if (cls === "Economy") {
+              price = selectedFlight.economyPrice;
+              info = "Basic ticket, no extras included.";
+            } else if (cls === "Business") {
+              price = selectedFlight.businessPrice;
+              info = "More space, priority boarding.";
+            } else if (cls === "First") {
+              price = selectedFlight.firstClassPrice;
+              info = "Luxury seating, premium service.";
+            }
+
+            return (
+              <div key={cls}>
+                <label>
+                  <input 
+                    type="radio" 
+                    name="seatClass" 
+                    value={cls} 
+                    checked={selectedClass === cls} 
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                  />
+                  {cls} - {price} €
+                </label>
+                <p style={{ fontSize: "14px", color: "#555", marginLeft: "20px" }}>{info}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+
 
       {/* Istmete arvu määramise sisend */}
       {selectedFlight && (
