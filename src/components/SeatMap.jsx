@@ -1,63 +1,64 @@
 import React from "react";
 
-const SeatMap = ({ seats, selectedSeats, onSelectSeat, preferences, suggestedSeats }) => {
-    const rows = 6;
-    const seatsPerRow = 4;
-    const extraLegroomRows = [1];
-    const exitRows = [1, 6];
-    const windowSeatIndexes = [0, 3];
+const SeatMap = ({ seats, selectedSeats, onSelectSeat, suggestedSeats }) => {
+    // console.log("Seats data:", seats);
+    if (!seats || seats.length === 0) {
+        return <div>No seats available.</div>;
+    }
+
+    const seatConfig = {
+        FIRST: "ABCD",
+        BUSINESS: "ABCDEFG",
+        ECONOMY: "ABCDEFGH"
+    };
 
     return (
         <div className="seat-map">
-            {Array.from({ length: rows }).map((_, rowIndex) => {
-                const rowNumber = rowIndex + 1;
-                const isExitRow = exitRows.includes(rowNumber);
-                const isExtraLegroom = extraLegroomRows.includes(rowNumber);
+            {/*console.log("Rendering seat map for classes:", [...new Set(seats.map(seat => seat.classType))])*/}
+            {[...new Set(seats.map(seat => seat.classType))].map(classType => {
+                const filteredSeats = seats.filter(seat => seat.classType === classType);
+                //console.log(`Seats in ${classType} class:`, filteredSeats);
+
+                const rows = filteredSeats.reduce((acc, seat) => {
+                    const rowMatch = seat.seatNumber.match(/^\d+/);
+                    if (!rowMatch) return acc;
+                    const row = rowMatch[0];
+
+                    if (!acc[row]) acc[row] = [];
+                    acc[row].push(seat);
+                    return acc;
+                }, {});
 
                 return (
-                    <div
-                        key={rowIndex}
-                        className={`row ${isExitRow ? "exit-row" : ""} ${
-                        isExtraLegroom ? "extra-legroom" : ""
-                        }`}
-                    >
-                        {Array.from({ length: seatsPerRow }).map((_, seatIndex) => {
-                            const seatLetter = String.fromCharCode(65 + seatIndex);
-                            const seat = seats.find(seat => seat.seatNumber === `${rowNumber}${seatLetter}`);
+                    <div key={classType || "unknown"} className={`seat-section ${classType?.toLowerCase() || ""}`}>
+                        <h2>{classType} Class</h2>
+                        {/*console.log(`Rows in ${classType} class:`, rows)*/}
+                        {Object.entries(rows).map(([rowNumber, rowSeats]) => (
+                            <div key={rowNumber} className="row">
+                                {(seatConfig[classType] || "").split("").map(letter => {
+                                    const seat = rowSeats.find(s => s.seatNumber.endsWith(letter));
+                                    if (!seat) return <div key={letter} className="seat empty" />;
 
-                            if (!seat) return null; 
-                            
-                            const seatNumber = seat.seatNumber;
+                                    const isSelected = selectedSeats.includes(seat.seatNumber);
+                                    const isOccupied = seat.occupied;
+                                    const isRecommended = suggestedSeats.some(s => s.seatNumber === seat.seatNumber);
 
-                            
-
-                            // Kontrollime, kas iste on juba valitud
-                            const isSelected = selectedSeats.includes(seatNumber);
-                            const isOccupied = seat.occupied;
-                            const isWindowSeat = windowSeatIndexes.includes(seatIndex);
-                            const isRecommended = Array.isArray(suggestedSeats) && suggestedSeats.some(s => s.seatNumber === seatNumber);
-
-                            
-
-                            const seatClassName = `seat 
-                                ${isWindowSeat ? "window-seat" : ""} 
-                                ${isSelected ? "selected" : ""} 
-                                ${isOccupied ? "occupied" : ""}
-                                ${isRecommended ? "recommended" : ""}`;
-                            
-                            return (
-                                <div
-                                    key={seatIndex}
-                                    className={seatClassName}
-                                    onClick={() => !isOccupied && onSelectSeat(seatNumber)}
-                                    style={{
-                                        cursor: isOccupied ? "not-allowed" : "pointer"
-                                    }}
-                                >
-                                    {seatNumber}
-                                </div>
-                            );
-                        })}
+                                    return (
+                                        <div
+                                            key={seat.seatNumber}
+                                            className={`seat 
+                                                        ${isSelected ? "selected" : ""} 
+                                                        ${isOccupied ? "occupied" : ""} 
+                                                        ${isRecommended ? "recommended" : ""}`}
+                                            onClick={() => !isOccupied && onSelectSeat(seat.seatNumber)}
+                                            style={{ cursor: isOccupied ? "not-allowed" : "pointer" }}
+                                        >
+                                            {seat.seatNumber}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
                 );
             })}

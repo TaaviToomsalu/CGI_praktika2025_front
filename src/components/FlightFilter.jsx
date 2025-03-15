@@ -30,7 +30,7 @@ const FlightFilter = ({
   
         {/* Istmeklassi valik */}
         <div>
-          <label>Seat Class:</label>
+          <label>Seat Class Interest:</label>
           <select value={seatClass} onChange={(e) => setSeatClass(e.target.value)}>
             <option value="economy">Economy</option>
             <option value="business">Business</option>
