@@ -45,7 +45,6 @@ const Home = () => {
     axios.get(`http://localhost:8080/flights/filter?${params.toString()}`)
       .then(response => {
         setFlights(response.data);
-        //console.log("Filtreeritud lend", response.data);
       })
       .catch(error => {
         console.error('Error fetching flights:', error);
@@ -55,13 +54,10 @@ const Home = () => {
 
   const fetchSeats = (flightId, seatClass) => {
 
-    console.log("Sent class: ", seatClass);
-
     setSelectedClass(seatClass);
     
     axios.get(`http://localhost:8080/seats/${flightId}?class=${seatClass}`)
       .then(response => {
-        console.log("Saadud istmed:", response.data);
         setSeats(response.data);
       })
       .catch(error => {
@@ -131,10 +127,7 @@ const Home = () => {
     .catch(error => {
       console.error("Error reserving seats:", error);
     });
-};
-
-
-
+  };
 
   const handlePreferenceChange = (preference) => {
     setPreferences((prevPreferences) => {
@@ -148,17 +141,14 @@ const Home = () => {
   
 
   const suggestSeats = () => {
-    if (selectedFlight && preferences.length > 0) {
-      if (!selectedFlight) {
-        console.error("Missing selected flight ID.");
-        return;
-      }
+    if (selectedFlight && selectedClass && preferences.length > 0) {
 
       const requestData = {
         flightId: selectedFlight,
         numSeats: numSeats,
         preferences: preferences.join(','),
-        requireAdjacent: adjacentSeats
+        requireAdjacent: adjacentSeats,
+        seatClass: selectedClass
       };
 
       axios.get(`http://localhost:8080/seats/${selectedFlight}/suggest`, {
@@ -166,7 +156,6 @@ const Home = () => {
       })
         .then(response => {
           if (response.data && response.data.length > 0) {
-            //console.log("Full API response:", response);
             setSuggestedSeats(response.data || []);
           } else {
             setSuggestedSeats(null);
@@ -179,13 +168,6 @@ const Home = () => {
       alert("Please select preferences first!");
     }
   };
-
-  /*
-  useEffect(() => {
-    console.log("Selected Flight:", selectedFlight);
-  }, [selectedFlight]);
-  */
-
 
 
   return (
@@ -270,7 +252,7 @@ const Home = () => {
 
 
 
-      {/* Istmete arvu määramise sisend */}
+      {/* Istmete filter */}
       {selectedFlight && selectedClass && (
         <div>
           <p>Enter number of seats</p>

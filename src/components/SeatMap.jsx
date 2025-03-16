@@ -41,7 +41,7 @@ const SeatMap = ({ seats, selectedSeats, onSelectSeat, suggestedSeats }) => {
 
                                     const isSelected = selectedSeats.includes(seat.seatNumber);
                                     const isOccupied = seat.occupied;
-                                    const isRecommended = suggestedSeats.some(s => s.seatNumber === seat.seatNumber);
+                                    const isRecommended = (suggestedSeats || []).some(s => s.seatNumber === seat.seatNumber);
 
                                     return (
                                         <div
